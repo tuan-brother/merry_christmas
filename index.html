@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎄 Merry Christmas 🎆</title>
+
+<style>
+body {
+  margin: 0;
+  background: radial-gradient(circle at bottom, #001, #000);
+  overflow: hidden;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+  color: white;
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.tree {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+}
+
+.layer {
+  width: 0;
+  height: 0;
+  border-left: 140px solid transparent;
+  border-right: 140px solid transparent;
+  border-bottom: 180px solid #0b6623;
+  margin-top: -80px;
+}
+
+.star {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 48px;
+  cursor: pointer;
+  animation: twinkle 1s infinite alternate;
+}
+
+#msg {
+  position: fixed;
+  bottom: 15%;
+  width: 100%;
+  text-align: center;
+  font-size: 20px;
+  opacity: 0;
+  transition: 0.4s;
+}
+
+@keyframes twinkle {
+  from { transform: translateX(-50%) scale(1); }
+  to { transform: translateX(-50%) scale(1.3); }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="fire"></canvas>
+
+<div class="tree">
+  <div class="star" onclick="specialFirework(event)">⭐</div>
+  <div class="layer"></div>
+  <div class="layer"></div>
+  <div class="layer"></div>
+</div>
+
+<div id="msg">🎁 Chúc bạn Giáng Sinh an lành & năm mới rực rỡ 🎄✨</div>
+
+<script>
+const canvas = document.getElementById("fire");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+window.onresize = () => {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+};
+
+let particles = [];
+
+function firework(x, y) {
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x, y,
+      angle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 6 + 2,
+      radius: Math.random() * 2 + 1,
+      life: 60,
+      color: `hsl(${Math.random() * 360},100%,60%)`
+    });
+  }
+}
+
+function animate() {
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  particles.forEach((p, i) => {
+    p.x += Math.cos(p.angle) * p.speed;
+    p.y += Math.sin(p.angle) * p.speed;
+    p.life--;
+    ctx.beginPath();
+    ctx.fillStyle = p.color;
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (p.life <= 0) particles.splice(i, 1);
+  });
+
+  requestAnimationFrame(animate);
+}
+animate();
+
+// Click anywhere
+document.addEventListener("click", e => {
+  firework(e.clientX, e.clientY);
+});
+
+// Special click on star
+function specialFirework(e) {
+  e.stopPropagation();
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      firework(innerWidth / 2, innerHeight / 2 - 150);
+    }, i * 200);
+  }
+  document.getElementById("msg").style.opacity = 1;
+}
+</script>
+
+</body>
+</html>
