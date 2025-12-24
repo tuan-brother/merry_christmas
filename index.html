@@ -2,142 +2,196 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎄 Merry Christmas 🎆</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🎄 Christmas 3D Game</title>
 <style>
-body {
-  margin: 0;
-  background: radial-gradient(circle at bottom, #001, #000);
-  overflow: hidden;
-  height: 100vh;
-  font-family: Arial, sans-serif;
-  color: white;
+body { margin:0; overflow:hidden; background:#000; }
+#ui {
+  position:fixed; bottom:20px; width:100%;
+  text-align:center; color:white;
+  font-family:Arial;
 }
-
-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-}
-
-.tree {
-  position: absolute;
-  left: 50%;
-  top: 55%;
-  transform: translate(-50%, -50%);
-}
-
-.layer {
-  width: 0;
-  height: 0;
-  border-left: 140px solid transparent;
-  border-right: 140px solid transparent;
-  border-bottom: 180px solid #0b6623;
-  margin-top: -80px;
-}
-
-.star {
-  position: absolute;
-  top: -60px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 48px;
-  cursor: pointer;
-  animation: twinkle 1s infinite alternate;
-}
-
-#msg {
-  position: fixed;
-  bottom: 15%;
-  width: 100%;
-  text-align: center;
-  font-size: 20px;
-  opacity: 0;
-  transition: 0.4s;
-}
-
-@keyframes twinkle {
-  from { transform: translateX(-50%) scale(1); }
-  to { transform: translateX(-50%) scale(1.3); }
+#result {
+  position:fixed; top:40%; width:100%;
+  text-align:center; font-size:32px;
+  color:#ffd700; display:none;
 }
 </style>
 </head>
 
 <body>
+<div id="ui">🎮 Xoay cây → Chọn 1 phong bì 🎁</div>
+<div id="result"></div>
 
-<canvas id="fire"></canvas>
-
-<div class="tree">
-  <div class="star" onclick="specialFirework(event)">⭐</div>
-  <div class="layer"></div>
-  <div class="layer"></div>
-  <div class="layer"></div>
-</div>
-
-<div id="msg">🎁 Chúc bạn Giáng Sinh an lành & năm mới rực rỡ 🎄✨</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-const canvas = document.getElementById("fire");
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+// ===== SETUP =====
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000);
+camera.position.set(0,4,9);
 
-window.onresize = () => {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-};
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+document.body.appendChild(renderer.domElement);
 
-let particles = [];
+const controls = new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
 
-function firework(x, y) {
-  for (let i = 0; i < 80; i++) {
-    particles.push({
-      x, y,
-      angle: Math.random() * Math.PI * 2,
-      speed: Math.random() * 6 + 2,
-      radius: Math.random() * 2 + 1,
-      life: 60,
-      color: `hsl(${Math.random() * 360},100%,60%)`
-    });
-  }
+// Light
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const light = new THREE.PointLight(0xffffff,1.2);
+light.position.set(5,6,5);
+scene.add(light);
+
+// ===== TREE =====
+const tree = new THREE.Group();
+scene.add(tree);
+
+const green = new THREE.MeshStandardMaterial({color:0x0b6623});
+for(let i=0;i<3;i++){
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(2-i*0.5,2.5,32),
+    green
+  );
+  cone.position.y=i*1.3;
+  tree.add(cone);
 }
 
-function animate() {
-  ctx.fillStyle = "rgba(0,0,0,0.2)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+// Trunk
+const trunk = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.3,0.4,1),
+  new THREE.MeshStandardMaterial({color:0x8b5a2b})
+);
+trunk.position.y=-1;
+tree.add(trunk);
 
-  particles.forEach((p, i) => {
-    p.x += Math.cos(p.angle) * p.speed;
-    p.y += Math.sin(p.angle) * p.speed;
-    p.life--;
-    ctx.beginPath();
-    ctx.fillStyle = p.color;
-    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    ctx.fill();
-    if (p.life <= 0) particles.splice(i, 1);
+// Star
+const star = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(0.35),
+  new THREE.MeshStandardMaterial({
+    color:0xffd700,
+    emissive:0xffaa00
+  })
+);
+star.position.y=3.5;
+tree.add(star);
+
+// ===== GIFTS =====
+const gifts=[];
+const giftGeo = new THREE.BoxGeometry(0.4,0.3,0.1);
+const giftMat = new THREE.MeshStandardMaterial({color:0xff3333});
+
+for(let i=0;i<5;i++){
+  const g = new THREE.Mesh(giftGeo,giftMat.clone());
+  const angle = i*(Math.PI*2/5);
+  g.position.set(
+    Math.cos(angle)*1.4,
+    1.2,
+    Math.sin(angle)*1.4
+  );
+  g.rotation.y = angle;
+  tree.add(g);
+  gifts.push(g);
+}
+
+// ===== RAYCAST =====
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let opened=false;
+
+const rewards=[50000,100000,150000,200000,300000];
+
+// ===== FIREWORK HEART =====
+let particles=[];
+const fwGeo=new THREE.BufferGeometry();
+const fwMat=new THREE.PointsMaterial({size:0.08,vertexColors:true});
+const fw=new THREE.Points(fwGeo,fwMat);
+scene.add(fw);
+
+function heartShape(){
+  const pts=[];
+  for(let t=0;t<Math.PI*2;t+=0.2){
+    const x=16*Math.pow(Math.sin(t),3);
+    const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+    pts.push(new THREE.Vector3(x*0.03,y*0.03,0));
+  }
+  return pts;
+}
+
+function textShape(){
+  return [
+    ...heartShape(),
+    new THREE.Vector3(-1,0,0),
+    new THREE.Vector3(1,0,0)
+  ];
+}
+
+function fireHeart(){
+  const shape=textShape();
+  shape.forEach(p=>{
+    particles.push({
+      pos:p.clone(),
+      vel:new THREE.Vector3(
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05,
+        (Math.random()-0.5)*0.05
+      ),
+      life:120,
+      color:new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
+    });
+  });
+}
+
+// ===== CLICK =====
+window.addEventListener("pointerdown",e=>{
+  if(opened) return;
+
+  mouse.x=(e.clientX/innerWidth)*2-1;
+  mouse.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+
+  const hit=raycaster.intersectObjects(gifts);
+  if(hit.length){
+    opened=true;
+    hit[0].object.material.color.set(0xffff00);
+
+    const money=rewards[Math.floor(Math.random()*rewards.length)];
+    document.getElementById("result").innerHTML=
+      `🎉 Bạn nhận được<br><b>${money.toLocaleString()} VNĐ</b>`;
+    document.getElementById("result").style.display="block";
+
+    fireHeart();
+  }
+});
+
+// ===== ANIMATE =====
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+
+  const pos=[],col=[];
+  particles=particles.filter(p=>p.life-- >0);
+  particles.forEach(p=>{
+    p.pos.add(p.vel);
+    pos.push(p.pos.x,p.pos.y,p.pos.z);
+    col.push(p.color.r,p.color.g,p.color.b);
   });
 
-  requestAnimationFrame(animate);
+  fwGeo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+  fwGeo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
+
+  renderer.render(scene,camera);
 }
 animate();
 
-// Click anywhere
-document.addEventListener("click", e => {
-  firework(e.clientX, e.clientY);
-});
-
-// Special click on star
-function specialFirework(e) {
-  e.stopPropagation();
-  for (let i = 0; i < 5; i++) {
-    setTimeout(() => {
-      firework(innerWidth / 2, innerHeight / 2 - 150);
-    }, i * 200);
-  }
-  document.getElementById("msg").style.opacity = 1;
-}
+window.onresize=()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+};
 </script>
-
 </body>
 </html>
