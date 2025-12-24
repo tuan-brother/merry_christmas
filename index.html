@@ -1,197 +1,194 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>🎄 Christmas 3D Game</title>
+
 <style>
-body { margin:0; overflow:hidden; background:#000; }
-#ui {
-  position:fixed; bottom:20px; width:100%;
-  text-align:center; color:white;
-  font-family:Arial;
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at bottom, #012, #000);
+}
+#tap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 22px;
+  font-family: Arial;
+  background: rgba(0,0,0,0.6);
+  z-index: 10;
 }
 #result {
-  position:fixed; top:40%; width:100%;
-  text-align:center; font-size:32px;
-  color:#ffd700; display:none;
+  position: fixed;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+  font-size: 32px;
+  color: gold;
+  display: none;
+  font-family: Arial;
 }
 </style>
 </head>
 
 <body>
-<div id="ui">🎮 Xoay cây → Chọn 1 phong bì 🎁</div>
+<div id="tap">👆 Chạm để bắt đầu game 🎮</div>
 <div id="result"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 
-<script>
-// ===== SETUP =====
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000);
-camera.position.set(0,4,9);
+let scene, camera, renderer, controls;
+let gifts = [], opened = false;
+let particles = [];
 
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(devicePixelRatio);
-document.body.appendChild(renderer.domElement);
+document.getElementById("tap").onclick = () => {
+  document.getElementById("tap").remove();
+  init();
+  animate();
+};
 
-const controls = new THREE.OrbitControls(camera,renderer.domElement);
-controls.enableDamping = true;
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000010);
 
-// Light
-scene.add(new THREE.AmbientLight(0xffffff,0.6));
-const light = new THREE.PointLight(0xffffff,1.2);
-light.position.set(5,6,5);
-scene.add(light);
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+  camera.position.set(0, 4, 9);
 
-// ===== TREE =====
-const tree = new THREE.Group();
-scene.add(tree);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
 
-const green = new THREE.MeshStandardMaterial({color:0x0b6623});
-for(let i=0;i<3;i++){
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(2-i*0.5,2.5,32),
-    green
-  );
-  cone.position.y=i*1.3;
-  tree.add(cone);
-}
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
 
-// Trunk
-const trunk = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.3,0.4,1),
-  new THREE.MeshStandardMaterial({color:0x8b5a2b})
-);
-trunk.position.y=-1;
-tree.add(trunk);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const light = new THREE.PointLight(0xffffff, 1.5);
+  light.position.set(5, 6, 5);
+  scene.add(light);
 
-// Star
-const star = new THREE.Mesh(
-  new THREE.IcosahedronGeometry(0.35),
-  new THREE.MeshStandardMaterial({
-    color:0xffd700,
-    emissive:0xffaa00
-  })
-);
-star.position.y=3.5;
-tree.add(star);
+  const tree = new THREE.Group();
+  scene.add(tree);
 
-// ===== GIFTS =====
-const gifts=[];
-const giftGeo = new THREE.BoxGeometry(0.4,0.3,0.1);
-const giftMat = new THREE.MeshStandardMaterial({color:0xff3333});
-
-for(let i=0;i<5;i++){
-  const g = new THREE.Mesh(giftGeo,giftMat.clone());
-  const angle = i*(Math.PI*2/5);
-  g.position.set(
-    Math.cos(angle)*1.4,
-    1.2,
-    Math.sin(angle)*1.4
-  );
-  g.rotation.y = angle;
-  tree.add(g);
-  gifts.push(g);
-}
-
-// ===== RAYCAST =====
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let opened=false;
-
-const rewards=[50000,100000,150000,200000,300000];
-
-// ===== FIREWORK HEART =====
-let particles=[];
-const fwGeo=new THREE.BufferGeometry();
-const fwMat=new THREE.PointsMaterial({size:0.08,vertexColors:true});
-const fw=new THREE.Points(fwGeo,fwMat);
-scene.add(fw);
-
-function heartShape(){
-  const pts=[];
-  for(let t=0;t<Math.PI*2;t+=0.2){
-    const x=16*Math.pow(Math.sin(t),3);
-    const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
-    pts.push(new THREE.Vector3(x*0.03,y*0.03,0));
+  const green = new THREE.MeshStandardMaterial({ color: 0x0b6623 });
+  for (let i = 0; i < 3; i++) {
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(2 - i * 0.5, 2.5, 32),
+      green
+    );
+    cone.position.y = i * 1.3;
+    tree.add(cone);
   }
-  return pts;
+
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.4, 1),
+    new THREE.MeshStandardMaterial({ color: 0x8b5a2b })
+  );
+  trunk.position.y = -1;
+  tree.add(trunk);
+
+  // Gifts
+  const geo = new THREE.BoxGeometry(0.4, 0.3, 0.1);
+  for (let i = 0; i < 5; i++) {
+    const gift = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ color: 0xff3333 })
+    );
+    const a = i * (Math.PI * 2 / 5);
+    gift.position.set(Math.cos(a) * 1.4, 1.2, Math.sin(a) * 1.4);
+    tree.add(gift);
+    gifts.push(gift);
+  }
+
+  window.addEventListener("pointerdown", pickGift);
+  window.addEventListener("resize", onResize);
 }
 
-function textShape(){
-  return [
-    ...heartShape(),
-    new THREE.Vector3(-1,0,0),
-    new THREE.Vector3(1,0,0)
-  ];
+function pickGift(e) {
+  if (opened) return;
+
+  const mouse = new THREE.Vector2(
+    (e.clientX / innerWidth) * 2 - 1,
+    -(e.clientY / innerHeight) * 2 + 1
+  );
+
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+
+  const hit = raycaster.intersectObjects(gifts);
+  if (hit.length) {
+    opened = true;
+    hit[0].object.material.color.set(0xffff00);
+
+    const rewards = [50000, 100000, 150000, 200000, 300000];
+    const money = rewards[Math.floor(Math.random() * rewards.length)];
+
+    const r = document.getElementById("result");
+    r.innerHTML = `🎉 Bạn nhận được<br><b>${money.toLocaleString()} VNĐ</b>`;
+    r.style.display = "block";
+
+    fireHeart();
+  }
 }
 
-function fireHeart(){
-  const shape=textShape();
-  shape.forEach(p=>{
+// Firework heart
+function fireHeart() {
+  const shape = [];
+  for (let t = 0; t < Math.PI * 2; t += 0.15) {
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t);
+    shape.push(new THREE.Vector3(x * 0.03, y * 0.03 + 2, 0));
+  }
+
+  shape.forEach(p => {
     particles.push({
-      pos:p.clone(),
-      vel:new THREE.Vector3(
-        (Math.random()-0.5)*0.05,
-        (Math.random()-0.5)*0.05,
-        (Math.random()-0.5)*0.05
+      pos: p.clone(),
+      vel: new THREE.Vector3(
+        (Math.random() - 0.5) * 0.05,
+        (Math.random() - 0.5) * 0.05,
+        (Math.random() - 0.5) * 0.05
       ),
-      life:120,
-      color:new THREE.Color(`hsl(${Math.random()*360},100%,60%)`)
+      life: 120,
+      color: new THREE.Color(`hsl(${Math.random() * 360},100%,60%)`)
     });
   });
 }
 
-// ===== CLICK =====
-window.addEventListener("pointerdown",e=>{
-  if(opened) return;
+const fwGeo = new THREE.BufferGeometry();
+const fwMat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true });
+const fw = new THREE.Points(fwGeo, fwMat);
 
-  mouse.x=(e.clientX/innerWidth)*2-1;
-  mouse.y=-(e.clientY/innerHeight)*2+1;
-  raycaster.setFromCamera(mouse,camera);
-
-  const hit=raycaster.intersectObjects(gifts);
-  if(hit.length){
-    opened=true;
-    hit[0].object.material.color.set(0xffff00);
-
-    const money=rewards[Math.floor(Math.random()*rewards.length)];
-    document.getElementById("result").innerHTML=
-      `🎉 Bạn nhận được<br><b>${money.toLocaleString()} VNĐ</b>`;
-    document.getElementById("result").style.display="block";
-
-    fireHeart();
-  }
-});
-
-// ===== ANIMATE =====
-function animate(){
+function animate() {
   requestAnimationFrame(animate);
   controls.update();
 
-  const pos=[],col=[];
-  particles=particles.filter(p=>p.life-- >0);
-  particles.forEach(p=>{
+  const pos = [], col = [];
+  particles = particles.filter(p => p.life-- > 0);
+  particles.forEach(p => {
     p.pos.add(p.vel);
-    pos.push(p.pos.x,p.pos.y,p.pos.z);
-    col.push(p.color.r,p.color.g,p.color.b);
+    pos.push(p.pos.x, p.pos.y, p.pos.z);
+    col.push(p.color.r, p.color.g, p.color.b);
   });
 
-  fwGeo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
-  fwGeo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));
+  fwGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  fwGeo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  if (!scene.children.includes(fw)) scene.add(fw);
 
-  renderer.render(scene,camera);
+  renderer.render(scene, camera);
 }
-animate();
 
-window.onresize=()=>{
-  camera.aspect=innerWidth/innerHeight;
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
-};
+  renderer.setSize(innerWidth, innerHeight);
+}
 </script>
 </body>
 </html>
